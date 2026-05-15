@@ -8,34 +8,79 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     
     <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; background: #121212; color: white; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: white; overflow: hidden; }
         #map { height: 100vh; width: 100vw; z-index: 1; }
         
-        .ui-panel {
+        .ui-header {
             position: fixed;
-            top: 10px;
+            top: 20px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(30, 30, 30, 0.9);
-            padding: 10px 20px;
-            border-radius: 25px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-            border: 1px solid #444;
-            pointer-events: none;
+            background: rgba(30, 30, 30, 0.95);
+            padding: 15px 25px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            border: 1px solid #2ed573;
             text-align: center;
+            min-width: 250px;
         }
-        
-        .leaflet-popup-content-wrapper { background: #222; color: white; border-radius: 8px; }
-        .leaflet-popup-tip { background: #222; }
-        input { background: #333; color: white; border: 1px solid #555; padding: 5px; border-radius: 4px; width: 150px; }
+
+        .stats-panel {
+            position: fixed;
+            bottom: 30px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(30, 30, 30, 0.9);
+            padding: 15px;
+            border-radius: 15px;
+            border-left: 5px solid #2ed573;
+            font-size: 14px;
+        }
+
+        /* Styl pro bubliny v mapě */
+        .leaflet-popup-content-wrapper {
+            background: #2a2a2a;
+            color: white;
+            border-radius: 12px;
+            padding: 5px;
+        }
+        .leaflet-popup-tip { background: #2a2a2a; }
+
+        .popup-input {
+            width: 100%;
+            padding: 8px;
+            margin: 10px 0;
+            background: #1a1a1a;
+            border: 1px solid #444;
+            color: #2ed573;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-weight: bold;
+        }
+
+        .btn-delete {
+            background: #ff4757;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            width: 100%;
+            font-size: 11px;
+            text-transform: uppercase;
+        }
     </style>
 </head>
 <body>
 
-    <div class="ui-panel">
-        <strong>🏍️ Moto Plánovač v1.0</strong><br>
-        <span style="font-size: 0.8em; color: #aaa;">Klikni do mapy pro přidání bodu</span>
+    <div class="ui-header">
+        <strong style="font-size: 1.2em;">🗺️ Moje Moto Trasa</strong><br>
+        <small style="color: #2ed573;">Kliknutím přidej bod zájmu</small>
+    </div>
+
+    <div class="stats-panel" id="stats">
+        📍 Počet zastávek: <span id="count">0</span>
     </div>
 
     <div id="map"></div>
@@ -43,37 +88,41 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     
     <script>
-        // Inicializace mapy (střed Evropy)
         const map = L.map('map').setView([49.0, 15.0], 5);
+        let markerCount = 0;
 
-        // Přidání mapových podkladů (OpenStreetMap Dark Mode styl)
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors'
+            attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Funkce pro přidání bodu
+        function updateStats() {
+            document.getElementById('count').innerText = markerCount;
+        }
+
         function onMapClick(e) {
-            const lat = e.latlng.lat.toFixed(5);
-            const lng = e.latlng.lng.toFixed(5);
+            markerCount++;
+            updateStats();
             
             const marker = L.marker(e.latlng, { draggable: true }).addTo(map);
             
-            // Obsah bubliny (popup)
-            const popupContent = `
-                <div style="color:white;">
-                    <b style="color:#fffa65;">Nový bod</b><br>
-                    <input type="text" placeholder="Poznámka..." onchange="this.parentElement.querySelector('b').innerText = this.value"><br>
-                    <small>${lat}, ${lng}</small><br>
-                    <button onclick="this.closest('.leaflet-marker-icon').remove()" style="display:none;">Smazat</button>
+            // Vytvoření elementu pro popup
+            const container = document.createElement('div');
+            container.innerHTML = `
+                <div style="min-width: 150px;">
+                    <span style="font-size:10px; color:#aaa;">Název místa:</span>
+                    <input type="text" class="popup-input" placeholder="Např. Kemp, Benzínka..." value="Bod ${markerCount}">
+                    <button class="btn-delete">Smazat bod</button>
                 </div>
             `;
-            
-            marker.bindPopup(popupContent).openPopup();
 
-            // Smazání pravým tlačítkem
-            marker.on('contextmenu', function() {
+            // Obsluha tlačítka smazat
+            container.querySelector('.btn-delete').onclick = () => {
                 map.removeLayer(marker);
-            });
+                markerCount--;
+                updateStats();
+            };
+
+            marker.bindPopup(container).openPopup();
         }
 
         map.on('click', onMapClick);
