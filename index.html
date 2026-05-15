@@ -3,9 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
-    <title>Moto Plánovač 🏍️</title>
+    <title>Moto Plánovač PRO 🏍️</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: white; overflow: hidden; }
@@ -13,119 +14,82 @@
         
         .ui-header {
             position: fixed;
-            top: 20px;
+            top: 15px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
             background: rgba(30, 30, 30, 0.95);
-            padding: 15px 25px;
+            padding: 10px 20px;
             border-radius: 30px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             border: 1px solid #2ed573;
             text-align: center;
-            min-width: 250px;
         }
 
-        .stats-panel {
-            position: fixed;
-            bottom: 30px;
-            right: 20px;
-            z-index: 1000;
-            background: rgba(30, 30, 30, 0.9);
-            padding: 15px;
-            border-radius: 15px;
-            border-left: 5px solid #2ed573;
-            font-size: 14px;
-        }
-
-        /* Styl pro bubliny v mapě */
-        .leaflet-popup-content-wrapper {
-            background: #2a2a2a;
-            color: white;
-            border-radius: 12px;
-            padding: 5px;
-        }
-        .leaflet-popup-tip { background: #2a2a2a; }
-
-        .popup-input {
-            width: 100%;
-            padding: 8px;
-            margin: 10px 0;
-            background: #1a1a1a;
+        /* Skrytí ošklivého textového itineráře Leafletu, chceme jen mapu */
+        .leaflet-routing-container {
+            background: rgba(30, 30, 30, 0.9) !important;
+            color: white !important;
+            border-radius: 10px;
             border: 1px solid #444;
-            color: #2ed573;
-            border-radius: 5px;
-            box-sizing: border-box;
-            font-weight: bold;
+            max-height: 200px;
+            overflow-y: auto;
         }
-
-        .btn-delete {
-            background: #ff4757;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            width: 100%;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
+        
+        .leaflet-routing-alt { color: white !important; }
     </style>
 </head>
 <body>
 
     <div class="ui-header">
-        <strong style="font-size: 1.2em;">🗺️ Moje Moto Trasa</strong><br>
-        <small style="color: #2ed573;">Kliknutím přidej bod zájmu</small>
-    </div>
-
-    <div class="stats-panel" id="stats">
-        📍 Počet zastávek: <span id="count">0</span>
+        <strong>📍 Plánovač Trasy</strong><br>
+        <small style="color: #2ed573;">Klikáním do mapy tvoř trasu</small>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
     
     <script>
+        // Nastavení mapy na Evropu
         const map = L.map('map').setView([49.0, 15.0], 5);
-        let markerCount = 0;
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        function updateStats() {
-            document.getElementById('count').innerText = markerCount;
-        }
+        // Inicializace plánovače trasy
+        const control = L.Routing.control({
+            waypoints: [], // Začínáme s prázdnou trasou
+            routeWhileDragging: true,
+            language: 'cs',
+            lineOptions: {
+                styles: [{ color: '#2ed573', opacity: 0.8, weight: 6 }]
+            },
+            createMarker: function(i, wp) {
+                return L.marker(wp.latLng, {
+                    draggable: true
+                }).bindPopup("Bod " + (i + 1));
+            }
+        }).addTo(map);
 
-        function onMapClick(e) {
-            markerCount++;
-            updateStats();
+        // Funkce: Kliknutím do mapy přidáš bod trasy
+        map.on('click', function(e) {
+            const container = control.getPlan();
+            const waypoints = container.getWaypoints();
             
-            const marker = L.marker(e.latlng, { draggable: true }).addTo(map);
+            // Najdeme první volné místo nebo přidáme na konec
+            let freeIndex = waypoints.findIndex(wp => wp.latLng === null);
             
-            // Vytvoření elementu pro popup
-            const container = document.createElement('div');
-            container.innerHTML = `
-                <div style="min-width: 150px;">
-                    <span style="font-size:10px; color:#aaa;">Název místa:</span>
-                    <input type="text" class="popup-input" placeholder="Např. Kemp, Benzínka..." value="Bod ${markerCount}">
-                    <button class="btn-delete">Smazat bod</button>
-                </div>
-            `;
-
-            // Obsluha tlačítka smazat
-            container.querySelector('.btn-delete').onclick = () => {
-                map.removeLayer(marker);
-                markerCount--;
-                updateStats();
-            };
-
-            marker.bindPopup(container).openPopup();
-        }
-
-        map.on('click', onMapClick);
+            if (freeIndex !== -1) {
+                waypoints[freeIndex].latLng = e.latlng;
+            } else {
+                waypoints.push(L.Routing.waypoint(e.latlng));
+            }
+            
+            control.setWaypoints(waypoints);
+        });
     </script>
 </body>
 </html>
