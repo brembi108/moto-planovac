@@ -6,7 +6,7 @@
     <title>Moto Plánovač PRO 🏍️</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     
     <style>
         body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: white; overflow: hidden; }
@@ -24,71 +24,71 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.6);
             border: 1px solid #2ed573;
             text-align: center;
+            pointer-events: none;
         }
 
-        /* Skrytí ošklivého textového itineráře Leafletu, chceme jen mapu */
+        /* Styl itineráře (tabulka vpravo) */
         .leaflet-routing-container {
-            background: rgba(30, 30, 30, 0.9) !important;
+            background: rgba(40, 40, 40, 0.9) !important;
             color: white !important;
+            border: 1px solid #444 !important;
             border-radius: 10px;
-            border: 1px solid #444;
-            max-height: 200px;
-            overflow-y: auto;
+            font-size: 12px;
         }
-        
-        .leaflet-routing-alt { color: white !important; }
+        .leaflet-routing-alt { background: transparent !important; color: white !important; }
+        .leaflet-routing-alt tr:hover { background: #333 !important; }
     </style>
 </head>
 <body>
 
     <div class="ui-header">
-        <strong>📍 Plánovač Trasy</strong><br>
-        <small style="color: #2ed573;">Klikáním do mapy tvoř trasu</small>
+        <strong>📍 Moto Plánovač PRO</strong><br>
+        <small style="color: #2ed573;">Kliknutím do mapy přidej bod trasy</small>
     </div>
 
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
     
     <script>
-        // Nastavení mapy na Evropu
+        // Inicializace mapy
         const map = L.map('map').setView([49.0, 15.0], 5);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Inicializace plánovače trasy
-        const control = L.Routing.control({
-            waypoints: [], // Začínáme s prázdnou trasou
+        // Vytvoření ovládání trasy
+        const routingControl = L.Routing.control({
+            waypoints: [], // Začínáme bez bodů
             routeWhileDragging: true,
             language: 'cs',
+            showAlternatives: true,
             lineOptions: {
                 styles: [{ color: '#2ed573', opacity: 0.8, weight: 6 }]
             },
-            createMarker: function(i, wp) {
+            createMarker: function(i, wp, n) {
                 return L.marker(wp.latLng, {
                     draggable: true
                 }).bindPopup("Bod " + (i + 1));
             }
         }).addTo(map);
 
-        // Funkce: Kliknutím do mapy přidáš bod trasy
+        // KLÍČOVÁ FUNKCE: Přidání bodu na kliknutí
         map.on('click', function(e) {
-            const container = control.getPlan();
-            const waypoints = container.getWaypoints();
+            const waypoints = routingControl.getWaypoints();
             
-            // Najdeme první volné místo nebo přidáme na konec
-            let freeIndex = waypoints.findIndex(wp => wp.latLng === null);
-            
-            if (freeIndex !== -1) {
-                waypoints[freeIndex].latLng = e.latlng;
+            // Najdeme první prázdný bod
+            const firstEmpty = waypoints.findIndex(wp => !wp.latLng);
+
+            if (firstEmpty !== -1) {
+                // Pokud máme prázdné sloty (na začátku), nahradíme je
+                routingControl.spliceWaypoints(firstEmpty, 1, e.latlng);
             } else {
-                waypoints.push(L.Routing.waypoint(e.latlng));
+                // Jinak přidáme nový bod na konec seznamu
+                routingControl.spliceWaypoints(waypoints.length, 0, e.latlng);
             }
-            
-            control.setWaypoints(waypoints);
         });
     </script>
 </body>
