@@ -75,9 +75,9 @@
             tap: false // Důležité pro opravu klikání na mobilech/Safari
         }).setView([49.0, 15.0], 6);
 
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+}).addTo(map);
 
         // Vytvoření plánovače
         const routingControl = L.Routing.control({
