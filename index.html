@@ -81,16 +81,21 @@
 
         // Vytvoření plánovače
         const routingControl = L.Routing.control({
-    waypoints: [],
-    routeWhileDragging: true,
-    router: L.Routing.osrmv1({
-        serviceUrl: 'https://router.project-osrm.org/route/v1',
-        profile: 'driving', // OSRM bohužel nemá nativní profil 'motorcycle' v demo verzi
-        exclude: 'motorway,toll' // KLÍČOVÝ PARAMETR: Vyhne se dálnicím a mýtu
-    }),
-    lineOptions: {
-        styles: [{ color: '#2ed573', opacity: 0.8, weight: 6 }]
-    },
+            waypoints: [],
+            routeWhileDragging: true,
+            router: L.Routing.osrmv1({
+                serviceUrl: 'https://router.project-osrm.org/route/v1',
+                profile: 'driving', 
+                exclude: 'motorway,toll' // Vyhne se dálnicím
+            }),
+            lineOptions: {
+                styles: [{ color: '#2ed573', opacity: 0.8, weight: 6 }]
+            },
+            createMarker: function(i, wp) {
+                return L.marker(wp.latLng, { draggable: true })
+                    .bindPopup(i === 0 ? "START" : "CÍL / PRŮJEZD " + i);
+            }
+        }).addTo(map);
 
         // Hlavní funkce pro klikání
         map.on('click', function(e) {
