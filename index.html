@@ -2,15 +2,15 @@
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-select=none">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Moto Plánovač PRO 🏍️</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
     
     <style>
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: white; overflow: hidden; }
-        #map { height: 100vh; width: 100vw; z-index: 1; }
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; background: #121212; color: white; }
+        #map { height: 100vh; width: 100vw; }
         
         .ui-header {
             position: fixed;
@@ -18,32 +18,50 @@
             left: 50%;
             transform: translateX(-50%);
             z-index: 1000;
-            background: rgba(30, 30, 30, 0.95);
+            background: rgba(30, 30, 30, 0.9);
             padding: 10px 20px;
-            border-radius: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            border-radius: 20px;
             border: 1px solid #2ed573;
             text-align: center;
             pointer-events: none;
         }
 
-        /* Styl itineráře (tabulka vpravo) */
-        .leaflet-routing-container {
-            background: rgba(40, 40, 40, 0.9) !important;
-            color: white !important;
-            border: 1px solid #444 !important;
-            border-radius: 10px;
-            font-size: 12px;
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            display: flex;
+            gap: 10px;
         }
-        .leaflet-routing-alt { background: transparent !important; color: white !important; }
-        .leaflet-routing-alt tr:hover { background: #333 !important; }
+
+        .btn {
+            background: #2ed573;
+            color: black;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            pointer-events: auto;
+        }
+
+        .btn-reset { background: #ff4757; color: white; }
+
+        /* Schováme textový itinerář, aby nezavazel na mobilu */
+        .leaflet-routing-container { display: none !important; }
     </style>
 </head>
 <body>
 
     <div class="ui-header">
         <strong>📍 Moto Plánovač PRO</strong><br>
-        <small style="color: #2ed573;">Kliknutím do mapy přidej bod trasy</small>
+        <small id="status">Klikni do mapy pro start trasy</small>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-reset" onclick="resetRoute()">Smazat trasu</button>
     </div>
 
     <div id="map"></div>
@@ -53,43 +71,51 @@
     
     <script>
         // Inicializace mapy
-        const map = L.map('map').setView([49.0, 15.0], 5);
+        const map = L.map('map', {
+            tap: false // Důležité pro opravu klikání na mobilech/Safari
+        }).setView([49.0, 15.0], 6);
 
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
-        // Vytvoření ovládání trasy
+        // Vytvoření plánovače
         const routingControl = L.Routing.control({
-            waypoints: [], // Začínáme bez bodů
+            waypoints: [],
             routeWhileDragging: true,
-            language: 'cs',
-            showAlternatives: true,
             lineOptions: {
                 styles: [{ color: '#2ed573', opacity: 0.8, weight: 6 }]
             },
-            createMarker: function(i, wp, n) {
-                return L.marker(wp.latLng, {
-                    draggable: true
-                }).bindPopup("Bod " + (i + 1));
+            createMarker: function(i, wp) {
+                return L.marker(wp.latLng, { draggable: true })
+                    .bindPopup(i === 0 ? "START" : "CÍL / PRŮJEZD " + i);
             }
         }).addTo(map);
 
-        // KLÍČOVÁ FUNKCE: Přidání bodu na kliknutí
+        // Hlavní funkce pro klikání
         map.on('click', function(e) {
-            const waypoints = routingControl.getWaypoints();
+            console.log("Kliknuto na:", e.latlng); // Pro kontrolu v konzoli
+            const currentWaypoints = routingControl.getWaypoints();
             
-            // Najdeme první prázdný bod
-            const firstEmpty = waypoints.findIndex(wp => !wp.latLng);
-
+            // Najdeme první prázdný bod nebo přidáme nový
+            const firstEmpty = currentWaypoints.findIndex(wp => !wp.latLng);
+            
             if (firstEmpty !== -1) {
-                // Pokud máme prázdné sloty (na začátku), nahradíme je
                 routingControl.spliceWaypoints(firstEmpty, 1, e.latlng);
             } else {
-                // Jinak přidáme nový bod na konec seznamu
-                routingControl.spliceWaypoints(waypoints.length, 0, e.latlng);
+                routingControl.spliceWaypoints(currentWaypoints.length, 0, e.latlng);
             }
+            
+            document.getElementById('status').innerText = "Trasa se přepočítává...";
         });
+
+        function resetRoute() {
+            routingControl.setWaypoints([]);
+            document.getElementById('status').innerText = "Klikni do mapy pro start trasy";
+        }
+
+        // Oprava pro Vercel/Mobil - vynucení překreslení
+        setTimeout(() => { map.invalidateSize(); }, 500);
     </script>
 </body>
 </html>
